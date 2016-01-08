@@ -31,6 +31,7 @@ struct rbd_options {
 	char *pool_name;
 	char *client_name;
 	int busy_poll;
+	int flush_on_open;
 };
 
 static struct fio_option options[] = {
@@ -67,6 +68,16 @@ static struct fio_option options[] = {
 		.type		= FIO_OPT_BOOL,
 		.help		= "Busy poll for completions instead of sleeping",
 		.off1		= offsetof(struct rbd_options, busy_poll),
+		.def		= "0",
+		.category	= FIO_OPT_C_ENGINE,
+		.group		= FIO_OPT_G_RBD,
+	},
+	{
+		.name		= "flush_on_open",
+		.lname		= "Flush on open",
+		.type		= FIO_OPT_BOOL,
+		.help		= "Flush on opening the RBD to activate client cache",
+		.off1		= offsetof(struct rbd_options, flush_on_open),
 		.def		= "0",
 		.category	= FIO_OPT_C_ENGINE,
 		.group		= FIO_OPT_G_RBD,
@@ -140,6 +151,13 @@ static int _fio_rbd_connect(struct thread_data *td)
 	if (r < 0) {
 		log_err("rbd_open failed.\n");
 		goto failed_open;
+	}
+	if (o->flush_on_open) {
+		r = rbd_flush(rbd->image);
+		if (r < 0) {
+			log_err("rbd_flush failed.\n");
+			goto failed_open;
+		}
 	}
 	return 0;
 
